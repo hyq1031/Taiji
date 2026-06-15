@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>太極 Cosmos — Interactive Orrery</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    background: #050812;
+    color: #f5f0e8;
+    font-family: Georgia, 'Times New Roman', serif;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    user-select: none;
+}
+
+#canvas { display: block; position: absolute; top: 0; left: 0; cursor: crosshair; }
+
+/* ── Title ── */
+#title {
+    position: absolute;
+    top: 24px; left: 32px;
+    pointer-events: none;
+    z-index: 10;
+}
+#title h1 {
+    font-size: 22px;
+    font-weight: normal;
+    color: #c9a227;
+    letter-spacing: 3px;
+    text-shadow: 0 0 20px rgba(201,162,39,0.4);
+}
+#title p {
+    font-size: 10px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: rgba(201,162,39,0.45);
+    margin-top: 5px;
+}
+
+/* ── Controls ── */
+#controls {
+    position: absolute;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    z-index: 10;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 90vw;
+}
+.ctrl-btn {
+    background: rgba(5,8,18,0.88);
+    border: 1px solid rgba(201,162,39,0.28);
+    color: rgba(201,162,39,0.75);
+    padding: 8px 18px;
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    font-family: Georgia, serif;
+    transition: all 0.18s;
+    white-space: nowrap;
+}
+.ctrl-btn:hover, .ctrl-btn.active {
+    background: rgba(201,162,39,0.14);
+    border-color: rgba(201,162,39,0.7);
+    color: #c9a227;
+}
+#speed-display {
+    color: rgba(201,162,39,0.5);
+    font-size: 11px;
+    letter-spacing: 3px;
+    min-width: 72px;
+    text-align: center;
+}
+
+/* ── Info panel ── */
+#info {
+    position: absolute;
+    top: 50%;
+    right: 28px;
+    transform: translateY(-50%);
+    width: 290px;
+    background: rgba(5,8,18,0.94);
+    border: 1px solid rgba(201,162,39,0.22);
+    padding: 30px 28px 26px;
+    z-index: 10;
+    display: none;
+    backdrop-filter: blur(6px);
+}
+#info.show { display: block; }
+#info-x {
+    position: absolute; top: 14px; right: 18px;
+    background: none; border: none;
+    color: rgba(201,162,39,0.4); cursor: pointer;
+    font-size: 16px; line-height: 1;
+}
+#info-x:hover { color: #c9a227; }
+#i-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+#i-name { font-size: 21px; }
+#i-chinese { font-size: 38px; line-height: 1; }
+#i-sub {
+    font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+    color: rgba(245,240,232,0.45); margin-bottom: 20px;
+}
+#i-hr { height: 1px; background: linear-gradient(to right, transparent, rgba(201,162,39,0.35), transparent); margin: 0 0 18px; }
+.i-row { display: flex; gap: 10px; margin-bottom: 10px; }
+.i-lbl { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: rgba(201,162,39,0.55); min-width: 66px; padding-top: 3px; }
+.i-val { font-size: 13px; color: rgba(245,240,232,0.82); line-height: 1.5; }
+#i-quote {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    font-style: italic;
+    font-size: 13px;
+    line-height: 1.75;
+    color: rgba(245,240,232,0.55);
+}
+
+/* ── Legend ── */
+#legend {
+    position: absolute; bottom: 80px; left: 32px;
+    z-index: 10; pointer-events: none;
+}
+.leg { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; font-size: 11px; color: rgba(245,240,232,0.4); letter-spacing: 1px; }
+.leg-line { width: 34px; height: 0; }
+
+/* ── Now indicator ── */
+#now-badge {
+    position: absolute;
+    top: 24px; right: 28px;
+    z-index: 10;
+    pointer-events: none;
+    text-align: right;
+    display: none;
+}
+#now-badge.show { display: block; }
+#now-element { font-size: 28px; letter-spacing: 2px; }
+#now-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: rgba(201,162,39,0.45); margin-top: 3px; }
+#now-mode { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: rgba(201,162,39,0.3); margin-top: 2px; }
+
+/* ── Hover tooltip ── */
+#tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: rgba(5,8,18,0.9);
+    border: 1px solid rgba(201,162,39,0.3);
+    padding: 6px 12px;
+    font-size: 12px;
+    letter-spacing: 1px;
+    color: rgba(245,240,232,0.8);
+    z-index: 20;
+    display: none;
+    white-space: nowrap;
+}
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<div id="title">
+    <h1>太極 COSMOS</h1>
+    <p>A Living Orrery of Yin, Yang &amp; Qi</p>
+</div>
+
+<div id="now-badge">
+    <div id="now-element"></div>
+    <div id="now-label">Active Element</div>
+    <div id="now-mode"></div>
+</div>
+
+<div id="info">
+    <button id="info-x">✕</button>
+    <div id="i-header">
+        <div id="i-name"></div>
+        <div id="i-chinese"></div>
+    </div>
+    <div id="i-sub"></div>
+    <div id="i-hr"></div>
+    <div class="i-row"><span class="i-lbl">Planet</span><span class="i-val" id="iv-planet"></span></div>
+    <div class="i-row"><span class="i-lbl">Organs</span><span class="i-val" id="iv-organs"></span></div>
+    <div class="i-row"><span class="i-lbl">Energy</span><span class="i-val" id="iv-energy"></span></div>
+    <div class="i-row"><span class="i-lbl">Generates</span><span class="i-val" id="iv-gen"></span></div>
+    <div class="i-row"><span class="i-lbl">Controls</span><span class="i-val" id="iv-ctrl"></span></div>
+    <div id="i-quote"></div>
+</div>
+
+<div id="legend">
+    <div class="leg"><svg width="34" height="12"><line x1="0" y1="6" x2="34" y2="6" stroke="rgba(100,210,120,0.5)" stroke-width="1.5"/><circle cx="10" cy="6" r="2.5" fill="rgba(100,210,120,0.7)"/><circle cx="24" cy="6" r="2.5" fill="rgba(100,210,120,0.7)"/></svg>Generating 相生</div>
+    <div class="leg"><svg width="34" height="12"><line x1="0" y1="6" x2="34" y2="6" stroke="rgba(210,80,80,0.5)" stroke-width="1.5"/><circle cx="10" cy="6" r="2" fill="rgba(210,80,80,0.7)"/><circle cx="24" cy="6" r="2" fill="rgba(210,80,80,0.7)"/></svg>Controlling 相克</div>
+</div>
+
+<div id="controls">
+    <button class="ctrl-btn" id="btn-slow">−</button>
+    <span id="speed-display">1× SPEED</span>
+    <button class="ctrl-btn" id="btn-fast">+</button>
+    <button class="ctrl-btn" id="btn-pause">⏸ PAUSE</button>
+    <button class="ctrl-btn active" id="btn-cycles">CYCLES</button>
+    <button class="ctrl-btn active" id="btn-qi">QI 氣</button>
+    <button class="ctrl-btn active" id="btn-labels">LABELS</button>
+    <button class="ctrl-btn active" id="btn-bagua">八卦</button>
+    <button class="ctrl-btn" id="btn-sound">♪ SOUND</button>
+    <button class="ctrl-btn" id="btn-now">NOW</button>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+resize();
+window.addEventListener('resize', resize);
+
+// ── State ──
+let t = 0, speed = 1, paused = false;
+let showCycles = true, showQi = true, showLabels = true, showBagua = true;
+let soundOn = false, nowMode = 0; // nowMode: 0=off, 1=season, 2=time
+let selected = null, hovered = null;
+let prevHovered = null;
+
+// ── Stars ──
+const STARS = Array.from({length: 320}, () => ({
+    x: Math.random(), y: Math.random(),
+    r: Math.random() * 1.5 + 0.2,
+    a: Math.random() * 0.55 + 0.15,
+    ts: Math.random() * 2.5 + 0.4,
+    to: Math.random() * Math.PI * 2,
+    gold: Math.random() < 0.08,
+}));
+
+// ── Planets ──
+const PLANETS = [
+    {
+        id:'fire', name:'Fire', cn:'火', py:'Huǒ',
+        color:'#e53935', glow:'229,57,53',
+        season:'Summer', ordinal:'2nd Planet',
+        r:0.115, spd:0.60, tilt:0.06, a0:1.0, sz:10,
+        organs:'Heart · Small Intestine',
+        energy:'Outward in all directions simultaneously',
+        gen:'Earth', ctrl:'Metal',
+        freq: 392.00,
+        quote:'Joy expressed so fully it becomes light itself — the heart that feels, that connects.',
+    },
+    {
+        id:'wood', name:'Wood', cn:'木', py:'Mù',
+        color:'#43a047', glow:'67,160,71',
+        season:'Spring', ordinal:'1st Planet',
+        r:0.185, spd:0.41, tilt:0.055, a0:2.4, sz:11,
+        organs:'Liver · Gallbladder',
+        energy:'Upward and outward',
+        gen:'Fire', ctrl:'Earth',
+        freq: 329.63,
+        quote:'The courage to begin — to bend without breaking and to rise without losing one\'s roots.',
+    },
+    {
+        id:'earth', name:'Earth', cn:'土', py:'Tǔ',
+        color:'#f9a825', glow:'249,168,37',
+        season:'Late Summer', ordinal:'3rd Planet',
+        r:0.265, spd:0.265, tilt:0.05, a0:4.0, sz:13,
+        organs:'Spleen · Stomach',
+        energy:'Reception, drawing toward center',
+        gen:'Metal', ctrl:'Water',
+        freq: 261.63,
+        quote:'Stillness is not absence of motion — it is motion so perfectly balanced it appears still.',
+    },
+    {
+        id:'metal', name:'Metal', cn:'金', py:'Jīn',
+        color:'#90a4ae', glow:'144,164,174',
+        season:'Autumn', ordinal:'4th Planet',
+        r:0.352, spd:0.175, tilt:0.07, a0:0.8, sz:10,
+        organs:'Lungs · Large Intestine',
+        energy:'Inward and downward',
+        gen:'Water', ctrl:'Wood',
+        freq: 293.66,
+        quote:'Clarity without coldness — precision without cruelty — the ability to let go without grief.',
+    },
+    {
+        id:'water', name:'Water', cn:'水', py:'Shuǐ',
+        color:'#1e88e5', glow:'30,136,229',
+        season:'Winter', ordinal:'5th Planet',
+        r:0.438, spd:0.107, tilt:0.05, a0:3.2, sz:12,
+        organs:'Kidneys · Bladder',
+        energy:'Downward, filling every hollow',
+        gen:'Wood', ctrl:'Fire',
+        freq: 440.00,
+        quote:'Wisdom without fear — the willingness to descend into the unknown and trust the ascent will follow.',
+    },
+];
+
+// Cycles
+const GEN  = ['wood','fire','earth','metal','water'];
+const CTRL = ['wood','earth','water','fire','metal'];
+
+// ── Trigrams (Later Heaven / 後天八卦) ──
+// Compass angles: S=π/2, SW=3π/4, W=π, NW=-3π/4, N=-π/2, NE=-π/4, E=0, SE=π/4
+const TRIGRAMS = [
+    { sym:'☲', cn:'離', name:'Li',   element:'Fire',   angle: Math.PI/2 },       // S
+    { sym:'☷', cn:'坤', name:'Kun',  element:'Earth',  angle: 3*Math.PI/4 },     // SW
+    { sym:'☱', cn:'兌', name:'Dui',  element:'Lake',   angle: Math.PI },          // W
+    { sym:'☰', cn:'乾', name:'Qian', element:'Heaven', angle: -3*Math.PI/4 },    // NW
+    { sym:'☵', cn:'坎', name:'Kan',  element:'Water',  angle: -Math.PI/2 },      // N
+    { sym:'☶', cn:'艮', name:'Gen',  element:'Mountain',angle: -Math.PI/4 },     // NE
+    { sym:'☳', cn:'震', name:'Zhen', element:'Thunder', angle: 0 },              // E
+    { sym:'☴', cn:'巽', name:'Xun',  element:'Wind',   angle: Math.PI/4 },       // SE
+];
+
+// ── Qi particles ──
+const QI = Array.from({length:160}, () => {
+    const pi = Math.floor(Math.random() * 5);
+    return {
+        pi,
+        a: Math.random() * Math.PI * 2,
+        dr: (Math.random() - 0.5) * 0.045,
+        spd: 0.25 + Math.random() * 0.85,
+        alpha: Math.random() * 0.55 + 0.08,
+        sz: Math.random() * 1.6 + 0.4,
+    };
+});
+
+// ── Audio ──
+let audioCtx = null;
+let hoverOsc = null, hoverGain = null;
+
+function initAudio() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function playHover(planet) {
+    if (!soundOn) return;
+    initAudio();
+    stopHover();
+    hoverOsc = audioCtx.createOscillator();
+    hoverGain = audioCtx.createGain();
+    hoverOsc.type = 'sine';
+    hoverOsc.frequency.value = planet.freq;
+    hoverGain.gain.setValueAtTime(0, audioCtx.currentTime);
+    hoverGain.gain.linearRampToValueAtTime(0.035, audioCtx.currentTime + 0.12);
+    hoverOsc.connect(hoverGain);
+    hoverGain.connect(audioCtx.destination);
+    hoverOsc.start();
+}
+
+function stopHover() {
+    if (hoverOsc) {
+        try {
+            hoverGain.gain.cancelScheduledValues(audioCtx.currentTime);
+            hoverGain.gain.setValueAtTime(hoverGain.gain.value, audioCtx.currentTime);
+            hoverGain.gain.linearRampToValueAtTime(0.0001, audioCtx.currentTime + 0.18);
+            hoverOsc.stop(audioCtx.currentTime + 0.18);
+        } catch(e) {}
+        hoverOsc = null; hoverGain = null;
+    }
+}
+
+function playClick(planet) {
+    if (!soundOn) return;
+    initAudio();
+    const freq = planet.freq;
+    // Fundamental + fifth + octave, each fading out
+    [[freq, 0.08], [freq * 1.5, 0.045], [freq * 2, 0.03]].forEach(([f, vol]) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = f;
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 2.0);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 2.0);
+    });
+}
+
+// ── Helpers ──
+function ppos(p) {
+    const cx = canvas.width / 2, cy = canvas.height / 2;
+    const R = Math.min(canvas.width, canvas.height) / 2;
+    const angle = p.a0 + t * p.spd;
+    return {
+        x: cx + Math.cos(angle) * p.r * R,
+        y: cy + Math.sin(angle) * p.r * R * (1 - p.tilt),
+    };
+}
+
+function byId(id) { return PLANETS.find(p => p.id === id); }
+
+function hexR(h) { return parseInt(h.slice(1,3),16); }
+function hexG(h) { return parseInt(h.slice(3,5),16); }
+function hexB(h) { return parseInt(h.slice(5,7),16); }
+function lighten(h, n) {
+    return `rgb(${Math.min(255,hexR(h)+n)},${Math.min(255,hexG(h)+n)},${Math.min(255,hexB(h)+n)})`;
+}
+
+// ── Now mode ──
+function getActiveElementId() {
+    const now = new Date();
+    if (nowMode === 1) {
+        // Season
+        const month = now.getMonth() + 1;
+        if (month >= 3 && month <= 5) return 'wood';
+        if (month >= 6 && month <= 8) return 'fire';
+        if (month === 9) return 'earth';
+        if (month >= 10 && month <= 11) return 'metal';
+        return 'water';
+    } else if (nowMode === 2) {
+        // TCM organ clock (2-hour periods)
+        const h = now.getHours();
+        if (h >= 23 || h < 3) return 'wood';   // 11pm–3am Gallbladder/Liver
+        if (h >= 3 && h < 7) return 'metal';    // 3–7am Lung/Large Intestine
+        if (h >= 7 && h < 11) return 'earth';   // 7–11am Stomach/Spleen
+        if (h >= 11 && h < 15) return 'fire';   // 11am–3pm Heart/Small Intestine
+        if (h >= 15 && h < 19) return 'water';  // 3–7pm Bladder/Kidney
+        return 'fire';                            // 7–11pm Pericardium
+    }
+    return null;
+}
+
+function updateNowBadge() {
+    const badge = document.getElementById('now-badge');
+    if (nowMode === 0) { badge.classList.remove('show'); return; }
+    badge.classList.add('show');
+    const id = getActiveElementId();
+    const p = byId(id);
+    document.getElementById('now-element').textContent = `${p.cn} ${p.name}`;
+    document.getElementById('now-element').style.color = p.color;
+    document.getElementById('now-mode').textContent = nowMode === 1 ? 'SEASON' : 'ORGAN CLOCK';
+}
+
+// ── Draw ──
+function drawBg() {
+    const g = ctx.createRadialGradient(
+        canvas.width/2, canvas.height/2, 0,
+        canvas.width/2, canvas.height/2, Math.max(canvas.width, canvas.height)*0.75
+    );
+    g.addColorStop(0, '#0e1230');
+    g.addColorStop(0.45, '#090b1e');
+    g.addColorStop(1, '#050812');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function drawStars() {
+    STARS.forEach(s => {
+        const tw = 0.55 + 0.45 * Math.sin(t * s.ts + s.to);
+        ctx.beginPath();
+        ctx.arc(s.x * canvas.width, s.y * canvas.height, s.r, 0, Math.PI*2);
+        ctx.fillStyle = s.gold
+            ? `rgba(201,162,39,${s.a * tw})`
+            : `rgba(255,255,255,${s.a * tw})`;
+        ctx.fill();
+    });
+}
+
+function drawOrbits() {
+    const cx = canvas.width/2, cy = canvas.height/2;
+    const R = Math.min(canvas.width, canvas.height)/2;
+    PLANETS.forEach(p => {
+        const isSel = selected && selected.id === p.id;
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(1, 1 - p.tilt);
+        ctx.beginPath();
+        ctx.arc(0, 0, p.r * R, 0, Math.PI*2);
+        ctx.strokeStyle = isSel
+            ? `rgba(${p.glow},0.55)`
+            : `rgba(${p.glow},0.12)`;
+        ctx.lineWidth = isSel ? 1.5 : 0.7;
+        ctx.setLineDash([3, 9]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+    });
+}
+
+function drawCycleLines() {
+    if (!showCycles) return;
+
+    // Generating — green flowing dots
+    for (let i = 0; i < GEN.length; i++) {
+        const pa = ppos(byId(GEN[i]));
+        const pb = ppos(byId(GEN[(i+1) % GEN.length]));
+
+        ctx.beginPath();
+        ctx.moveTo(pa.x, pa.y);
+        ctx.lineTo(pb.x, pb.y);
+        ctx.strokeStyle = 'rgba(100,210,120,0.10)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([]);
+        ctx.stroke();
+
+        // 4 dots flowing from source to generated
+        const numDots = 4;
+        for (let d = 0; d < numDots; d++) {
+            const frac = ((t * 0.28 + d / numDots) % 1 + 1) % 1;
+            const x = pa.x + (pb.x - pa.x) * frac;
+            const y = pa.y + (pb.y - pa.y) * frac;
+            const alpha = Math.sin(frac * Math.PI) * 0.75;
+            ctx.beginPath();
+            ctx.arc(x, y, 2.8, 0, Math.PI*2);
+            ctx.fillStyle = `rgba(100,210,120,${alpha})`;
+            ctx.fill();
+        }
+    }
+
+    // Controlling — red flowing dots
+    for (let i = 0; i < CTRL.length; i++) {
+        const pa = ppos(byId(CTRL[i]));
+        const pb = ppos(byId(CTRL[(i+1) % CTRL.length]));
+
+        ctx.beginPath();
+        ctx.moveTo(pa.x, pa.y);
+        ctx.lineTo(pb.x, pb.y);
+        ctx.strokeStyle = 'rgba(210,80,80,0.08)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([]);
+        ctx.stroke();
+
+        const numDots = 3;
+        for (let d = 0; d < numDots; d++) {
+            const frac = ((t * 0.18 + d / numDots) % 1 + 1) % 1;
+            const x = pa.x + (pb.x - pa.x) * frac;
+            const y = pa.y + (pb.y - pa.y) * frac;
+            const alpha = Math.sin(frac * Math.PI) * 0.6;
+            ctx.beginPath();
+            ctx.arc(x, y, 2, 0, Math.PI*2);
+            ctx.fillStyle = `rgba(210,80,80,${alpha})`;
+            ctx.fill();
+        }
+    }
+}
+
+function drawQi() {
+    if (!showQi) return;
+    const cx = canvas.width/2, cy = canvas.height/2;
+    const R = Math.min(canvas.width, canvas.height)/2;
+
+    QI.forEach(q => {
+        const p = PLANETS[q.pi];
+        const angle = q.a + t * p.spd * q.spd;
+        const r = (p.r + q.dr) * R;
+        const x = cx + Math.cos(angle) * r;
+        const y = cy + Math.sin(angle) * r * (1 - p.tilt);
+
+        const pulse = 0.6 + 0.4 * Math.sin(t * 1.5 + q.a);
+        ctx.beginPath();
+        ctx.arc(x, y, q.sz, 0, Math.PI*2);
+        ctx.fillStyle = `rgba(201,162,39,${q.alpha * pulse * 0.55})`;
+        ctx.fill();
+    });
+}
+
+function drawBagua() {
+    if (!showBagua) return;
+    const cx = canvas.width/2, cy = canvas.height/2;
+    const R = Math.min(canvas.width, canvas.height)/2;
+    const ringR = 0.56 * R;
+    const rotOffset = t * 0.04; // slow drift
+
+    TRIGRAMS.forEach(tg => {
+        const ang = tg.angle + rotOffset;
+        const x = cx + Math.cos(ang) * ringR;
+        const y = cy + Math.sin(ang) * ringR;
+
+        const pulse = 0.55 + 0.45 * Math.sin(t * 0.6 + tg.angle);
+
+        ctx.save();
+        ctx.font = `${Math.round(R * 0.048)}px Georgia`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = `rgba(201,162,39,${0.38 * pulse})`;
+        ctx.fillText(tg.sym, x, y);
+
+        if (showLabels) {
+            ctx.font = `${Math.round(R * 0.026)}px Georgia`;
+            ctx.fillStyle = `rgba(201,162,39,${0.22 * pulse})`;
+            // Offset label radially outward from center
+            const labelR = ringR + R * 0.062;
+            const lx = cx + Math.cos(ang) * labelR;
+            const ly = cy + Math.sin(ang) * labelR;
+            ctx.fillText(tg.cn, lx, ly);
+        }
+        ctx.restore();
+    });
+
+    // Subtle ring guide
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, ringR, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(201,162,39,0.055)';
+    ctx.lineWidth = 0.8;
+    ctx.setLineDash([2, 18]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+}
+
+function drawSun() {
+    const cx = canvas.width/2, cy = canvas.height/2;
+    const r = Math.min(canvas.width, canvas.height) * 0.037;
+
+    const aura = ctx.createRadialGradient(cx, cy, r*0.6, cx, cy, r*4.5);
+    aura.addColorStop(0, 'rgba(255,224,100,0.22)');
+    aura.addColorStop(0.35, 'rgba(201,162,39,0.09)');
+    aura.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = aura;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r*4.5, 0, Math.PI*2);
+    ctx.fill();
+
+    const ring = ctx.createRadialGradient(cx, cy, r*0.8, cx, cy, r*2);
+    ring.addColorStop(0, 'rgba(255,235,150,0.12)');
+    ring.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = ring;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r*2, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(t * 0.28);
+
+    ctx.beginPath();
+    ctx.arc(0, 0, r, -Math.PI/2, Math.PI/2, false);
+    ctx.fillStyle = '#f0e0a0';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(0, 0, r, Math.PI/2, -Math.PI/2, false);
+    ctx.fillStyle = '#0c102e';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(0, -r/2, r/2, -Math.PI/2, Math.PI/2, true);
+    ctx.fillStyle = '#0c102e';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(0, r/2, r/2, -Math.PI/2, Math.PI/2, false);
+    ctx.fillStyle = '#f0e0a0';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(0, -r/2, r/5.5, 0, Math.PI*2);
+    ctx.fillStyle = '#f0e0a0';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(0, r/2, r/5.5, 0, Math.PI*2);
+    ctx.fillStyle = '#0c102e';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(201,162,39,0.65)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.restore();
+
+    if (showLabels) {
+        ctx.fillStyle = 'rgba(201,162,39,0.32)';
+        ctx.font = `${Math.round(r*0.55)}px Georgia`;
+        ctx.textAlign = 'center';
+        ctx.fillText('陰陽', cx, cy + r + 18);
+    }
+}
+
+function drawPlanets() {
+    const activeId = nowMode > 0 ? getActiveElementId() : null;
+
+    PLANETS.forEach(p => {
+        const pos = ppos(p);
+        const isSel = selected && selected.id === p.id;
+        const isHov = hovered && hovered.id === p.id;
+        const isActive = activeId === p.id;
+        const sz = p.sz * (isSel ? 1.38 : isHov ? 1.15 : 1);
+
+        ctx.save();
+
+        // Extra glow for active element in now mode
+        if (isActive) {
+            const pulse = 0.7 + 0.3 * Math.sin(t * 2.2);
+            ctx.shadowColor = p.color;
+            ctx.shadowBlur = 48 * pulse;
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, sz + 10, 0, Math.PI*2);
+            ctx.strokeStyle = `rgba(${p.glow},${0.35 * pulse})`;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = isSel ? 32 : isHov ? 22 : 14;
+
+        const g = ctx.createRadialGradient(
+            pos.x - sz*0.32, pos.y - sz*0.32, sz*0.05,
+            pos.x, pos.y, sz
+        );
+        g.addColorStop(0, lighten(p.color, 55));
+        g.addColorStop(0.5, p.color);
+        g.addColorStop(1, `rgba(${p.glow},0.7)`);
+
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, sz, 0, Math.PI*2);
+        ctx.fillStyle = g;
+        ctx.fill();
+
+        if (isSel) {
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, sz + 6, 0, Math.PI*2);
+            ctx.strokeStyle = `rgba(${p.glow},0.5)`;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        }
+
+        ctx.restore();
+
+        if (showLabels) {
+            ctx.save();
+            ctx.font = `${isSel ? 14 : 12}px Georgia`;
+            ctx.textAlign = 'center';
+            ctx.fillStyle = (isSel || isActive) ? p.color : 'rgba(245,240,232,0.72)';
+            ctx.fillText(p.cn, pos.x, pos.y - sz - 8);
+            if (isSel || isHov || isActive) {
+                ctx.font = '10px Georgia';
+                ctx.fillStyle = 'rgba(245,240,232,0.45)';
+                ctx.fillText(p.name, pos.x, pos.y - sz - 22);
+            }
+            ctx.restore();
+        }
+    });
+}
+
+// ── Render loop ──
+let last = null;
+let nowTickCounter = 0;
+function render(now) {
+    if (!last) last = now;
+    const dt = Math.min((now - last) / 1000, 0.08);
+    last = now;
+    if (!paused) t += dt * speed;
+
+    // Update now badge every ~60 frames
+    nowTickCounter++;
+    if (nowTickCounter % 60 === 0) updateNowBadge();
+
+    drawBg();
+    drawStars();
+    drawBagua();
+    drawOrbits();
+    drawCycleLines();
+    drawQi();
+    drawSun();
+    drawPlanets();
+
+    requestAnimationFrame(render);
+}
+requestAnimationFrame(render);
+
+// ── Mouse interaction ──
+function findPlanetAt(mx, my) {
+    for (const p of PLANETS) {
+        const pos = ppos(p);
+        if (Math.hypot(mx - pos.x, my - pos.y) <= p.sz + 14) return p;
+    }
+    return null;
+}
+
+canvas.addEventListener('mousemove', e => {
+    const p = findPlanetAt(e.clientX, e.clientY);
+
+    if (p !== prevHovered) {
+        if (prevHovered && !p) stopHover();
+        if (p) playHover(p);
+        prevHovered = p;
+    }
+
+    hovered = p;
+    canvas.style.cursor = p ? 'pointer' : 'crosshair';
+
+    const tip = document.getElementById('tooltip');
+    if (p && !selected) {
+        tip.style.display = 'block';
+        tip.style.left = (e.clientX + 16) + 'px';
+        tip.style.top  = (e.clientY - 12) + 'px';
+        tip.textContent = `${p.cn} ${p.name} — ${p.season}`;
+        tip.style.color = p.color;
+        tip.style.borderColor = `rgba(${p.glow},0.45)`;
+    } else {
+        tip.style.display = 'none';
+    }
+});
+
+canvas.addEventListener('click', e => {
+    const p = findPlanetAt(e.clientX, e.clientY);
+    if (p) {
+        selected = p;
+        playClick(p);
+        openPanel(p);
+    } else {
+        selected = null;
+        document.getElementById('info').classList.remove('show');
+    }
+    document.getElementById('tooltip').style.display = 'none';
+});
+
+function openPanel(p) {
+    document.getElementById('i-name').textContent = `${p.name} — ${p.py}`;
+    document.getElementById('i-name').style.color = p.color;
+    document.getElementById('i-chinese').textContent = p.cn;
+    document.getElementById('i-chinese').style.color = p.color;
+    document.getElementById('i-sub').textContent = `${p.ordinal}  ·  ${p.season}`;
+    document.getElementById('iv-planet').textContent = p.ordinal;
+    document.getElementById('iv-organs').textContent = p.organs;
+    document.getElementById('iv-energy').textContent = p.energy;
+    document.getElementById('iv-gen').textContent = p.gen;
+    document.getElementById('iv-ctrl').textContent = p.ctrl;
+    document.getElementById('i-quote').textContent = `"${p.quote}"`;
+    document.getElementById('info').style.borderColor = `rgba(${p.glow},0.38)`;
+    document.getElementById('info').classList.add('show');
+}
+
+document.getElementById('info-x').addEventListener('click', () => {
+    selected = null;
+    document.getElementById('info').classList.remove('show');
+});
+
+// ── Controls ──
+let speedSteps = [0.25, 0.5, 1, 2, 4, 8, 16];
+let speedIdx = 2;
+
+function updateSpeed() {
+    speed = speedSteps[speedIdx];
+    document.getElementById('speed-display').textContent = `${speed}× SPEED`;
+}
+
+document.getElementById('btn-fast').addEventListener('click', () => {
+    speedIdx = Math.min(speedIdx + 1, speedSteps.length - 1);
+    updateSpeed();
+});
+document.getElementById('btn-slow').addEventListener('click', () => {
+    speedIdx = Math.max(speedIdx - 1, 0);
+    updateSpeed();
+});
+
+document.getElementById('btn-pause').addEventListener('click', function() {
+    paused = !paused;
+    this.textContent = paused ? '▶ RESUME' : '⏸ PAUSE';
+    this.classList.toggle('active', paused);
+});
+
+document.getElementById('btn-cycles').addEventListener('click', function() {
+    showCycles = !showCycles;
+    this.classList.toggle('active', showCycles);
+});
+
+document.getElementById('btn-qi').addEventListener('click', function() {
+    showQi = !showQi;
+    this.classList.toggle('active', showQi);
+});
+
+document.getElementById('btn-labels').addEventListener('click', function() {
+    showLabels = !showLabels;
+    this.classList.toggle('active', showLabels);
+});
+
+document.getElementById('btn-bagua').addEventListener('click', function() {
+    showBagua = !showBagua;
+    this.classList.toggle('active', showBagua);
+});
+
+document.getElementById('btn-sound').addEventListener('click', function() {
+    soundOn = !soundOn;
+    this.classList.toggle('active', soundOn);
+    if (soundOn) initAudio();
+    else stopHover();
+});
+
+document.getElementById('btn-now').addEventListener('click', function() {
+    nowMode = (nowMode + 1) % 3;
+    const labels = ['NOW', 'SEASON', 'CLOCK'];
+    this.textContent = labels[nowMode];
+    this.classList.toggle('active', nowMode > 0);
+    updateNowBadge();
+});
+
+// Initial now badge update
+updateNowBadge();
+</script>
+</body>
+</html>
