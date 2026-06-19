@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="description" content="An interactive orrery inspired by Taoist cosmology, visualizing the eight trigrams (八卦) and their elemental cycles.">
 <title>太極 Cosmos — Interactive Orrery</title>
 <style>
@@ -45,17 +45,46 @@ body {
 /* ── Controls ── */
 #controls {
     position: absolute;
-    bottom: 28px;
-    left: 50%;
-    transform: translateX(-50%);
+    bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+    left: 0; right: 0;
     display: flex;
     gap: 10px;
     align-items: center;
     z-index: 10;
     flex-wrap: wrap;
     justify-content: center;
-    max-width: 90vw;
+    padding: 0 14px;
+    transition: transform 0.34s cubic-bezier(.4,0,.2,1), opacity 0.34s ease;
 }
+#controls.hidden {
+    transform: translateY(180%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Pill handle to bring the bar back when minimized */
+#controls-handle {
+    position: absolute;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 11;
+    background: rgba(5,8,18,0.88);
+    border: 1px solid rgba(201,162,39,0.28);
+    color: rgba(201,162,39,0.75);
+    padding: 7px 22px;
+    border-radius: 22px;
+    font-size: 13px;
+    letter-spacing: 3px;
+    cursor: pointer;
+    font-family: Georgia, serif;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, border-color 0.18s, color 0.18s;
+}
+#controls-handle.show { opacity: 1; pointer-events: auto; }
+#controls-handle:hover { border-color: rgba(201,162,39,0.7); color: #c9a227; }
+#btn-min { font-size: 15px; line-height: 1; padding: 6px 12px; }
 .ctrl-btn {
     background: rgba(5,8,18,0.88);
     border: 1px solid rgba(201,162,39,0.28);
@@ -160,6 +189,45 @@ body {
     display: none;
     white-space: nowrap;
 }
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+    #title { top: 16px; left: 18px; }
+    #title h1 { font-size: 17px; letter-spacing: 2px; }
+    #title p { font-size: 8px; letter-spacing: 2px; }
+
+    #now-badge { top: 16px; right: 18px; }
+    #now-element { font-size: 20px; }
+
+    /* Info panel becomes a bottom sheet */
+    #info {
+        top: auto; bottom: 0; right: 0; left: 0;
+        transform: none;
+        width: auto;
+        max-height: 58vh;
+        overflow-y: auto;
+        padding: 22px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+        border: none;
+        border-top: 1px solid rgba(201,162,39,0.3);
+    }
+    #i-chinese { font-size: 30px; }
+    #i-name { font-size: 18px; }
+
+    /* Legend would collide with the controls — hide it */
+    #legend { display: none; }
+
+    #controls {
+        bottom: 16px;
+        gap: 6px;
+        max-width: 96vw;
+    }
+    .ctrl-btn { padding: 7px 11px; font-size: 11px; letter-spacing: 1px; }
+    #speed-display { font-size: 10px; letter-spacing: 1.5px; min-width: 58px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ctrl-btn { transition: none; }
+}
 </style>
 </head>
 <body>
@@ -209,7 +277,10 @@ body {
     <button class="ctrl-btn active" id="btn-bagua">八卦</button>
     <button class="ctrl-btn" id="btn-sound">♪ SOUND</button>
     <button class="ctrl-btn" id="btn-now">NOW</button>
+    <button class="ctrl-btn" id="btn-min" title="Hide controls" aria-label="Hide controls">⌄</button>
 </div>
+
+<button id="controls-handle" aria-label="Show controls">☰ 控制</button>
 
 <div id="tooltip"></div>
 
@@ -217,7 +288,18 @@ body {
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+let W = 0, H = 0, DPR = 1;
+function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = Math.round(W * DPR);
+    canvas.height = Math.round(H * DPR);
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+const COARSE = window.matchMedia('(pointer:coarse)').matches;
 resize();
 window.addEventListener('resize', resize);
 
@@ -386,8 +468,8 @@ function playClick(planet) {
 
 // ── Helpers ──
 function ppos(p) {
-    const cx = canvas.width / 2, cy = canvas.height / 2;
-    const R = Math.min(canvas.width, canvas.height) / 2;
+    const cx = W / 2, cy = H / 2;
+    const R = Math.min(W, H) / 2;
     const angle = p.a0 + t * p.spd;
     return {
         x: cx + Math.cos(angle) * p.r * R,
@@ -442,21 +524,21 @@ function updateNowBadge() {
 // ── Draw ──
 function drawBg() {
     const g = ctx.createRadialGradient(
-        canvas.width/2, canvas.height/2, 0,
-        canvas.width/2, canvas.height/2, Math.max(canvas.width, canvas.height)*0.75
+        W/2, H/2, 0,
+        W/2, H/2, Math.max(W, H)*0.75
     );
     g.addColorStop(0, '#0e1230');
     g.addColorStop(0.45, '#090b1e');
     g.addColorStop(1, '#050812');
     ctx.fillStyle = g;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, W, H);
 }
 
 function drawStars() {
     STARS.forEach(s => {
         const tw = 0.55 + 0.45 * Math.sin(t * s.ts + s.to);
         ctx.beginPath();
-        ctx.arc(s.x * canvas.width, s.y * canvas.height, s.r, 0, Math.PI*2);
+        ctx.arc(s.x * W, s.y * H, s.r, 0, Math.PI*2);
         ctx.fillStyle = s.gold
             ? `rgba(201,162,39,${s.a * tw})`
             : `rgba(255,255,255,${s.a * tw})`;
@@ -465,8 +547,8 @@ function drawStars() {
 }
 
 function drawOrbits() {
-    const cx = canvas.width/2, cy = canvas.height/2;
-    const R = Math.min(canvas.width, canvas.height)/2;
+    const cx = W/2, cy = H/2;
+    const R = Math.min(W, H)/2;
     PLANETS.forEach(p => {
         const isSel = selected && selected.id === p.id;
         ctx.save();
@@ -544,8 +626,8 @@ function drawCycleLines() {
 
 function drawQi() {
     if (!showQi) return;
-    const cx = canvas.width/2, cy = canvas.height/2;
-    const R = Math.min(canvas.width, canvas.height)/2;
+    const cx = W/2, cy = H/2;
+    const R = Math.min(W, H)/2;
 
     QI.forEach(q => {
         const p = PLANETS[q.pi];
@@ -564,8 +646,8 @@ function drawQi() {
 
 function drawBagua() {
     if (!showBagua) return;
-    const cx = canvas.width/2, cy = canvas.height/2;
-    const R = Math.min(canvas.width, canvas.height)/2;
+    const cx = W/2, cy = H/2;
+    const R = Math.min(W, H)/2;
     const ringR = 0.56 * R;
     const rotOffset = t * 0.04; // slow drift
 
@@ -608,8 +690,8 @@ function drawBagua() {
 }
 
 function drawSun() {
-    const cx = canvas.width/2, cy = canvas.height/2;
-    const r = Math.min(canvas.width, canvas.height) * 0.037;
+    const cx = W/2, cy = H/2;
+    const r = Math.min(W, H) * 0.037;
 
     const aura = ctx.createRadialGradient(cx, cy, r*0.6, cx, cy, r*4.5);
     aura.addColorStop(0, 'rgba(255,224,100,0.22)');
@@ -772,11 +854,24 @@ requestAnimationFrame(render);
 
 // ── Mouse interaction ──
 function findPlanetAt(mx, my) {
+    const pad = COARSE ? 26 : 14;
     for (const p of PLANETS) {
         const pos = ppos(p);
-        if (Math.hypot(mx - pos.x, my - pos.y) <= p.sz + 14) return p;
+        if (Math.hypot(mx - pos.x, my - pos.y) <= p.sz + pad) return p;
     }
     return null;
+}
+
+function selectPlanet(p) {
+    if (p) {
+        selected = p;
+        playClick(p);
+        openPanel(p);
+    } else {
+        selected = null;
+        document.getElementById('info').classList.remove('show');
+    }
+    document.getElementById('tooltip').style.display = 'none';
 }
 
 canvas.addEventListener('mousemove', e => {
@@ -793,29 +888,37 @@ canvas.addEventListener('mousemove', e => {
 
     const tip = document.getElementById('tooltip');
     if (p && !selected) {
-        tip.style.display = 'block';
-        tip.style.left = (e.clientX + 16) + 'px';
-        tip.style.top  = (e.clientY - 12) + 'px';
         tip.textContent = `${p.cn} ${p.name} — ${p.season}`;
         tip.style.color = p.color;
         tip.style.borderColor = `rgba(${p.glow},0.45)`;
+        tip.style.display = 'block';
+        // Clamp within viewport, flipping when near the right/bottom edge
+        const tw = tip.offsetWidth, th = tip.offsetHeight, m = 8;
+        let lx = e.clientX + 16, ly = e.clientY - 12;
+        if (lx + tw + m > W) lx = e.clientX - tw - 16;
+        if (ly + th + m > H) ly = H - th - m;
+        if (ly < m) ly = m;
+        tip.style.left = lx + 'px';
+        tip.style.top  = ly + 'px';
     } else {
         tip.style.display = 'none';
     }
 });
 
 canvas.addEventListener('click', e => {
-    const p = findPlanetAt(e.clientX, e.clientY);
-    if (p) {
-        selected = p;
-        playClick(p);
-        openPanel(p);
-    } else {
-        selected = null;
-        document.getElementById('info').classList.remove('show');
-    }
-    document.getElementById('tooltip').style.display = 'none';
+    selectPlanet(findPlanetAt(e.clientX, e.clientY));
 });
+
+canvas.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) return;
+    const tch = e.touches[0];
+    const p = findPlanetAt(tch.clientX, tch.clientY);
+    if (p) {
+        e.preventDefault();
+        if (soundOn) initAudio();
+    }
+    selectPlanet(p);
+}, { passive: false });
 
 function openPanel(p) {
     document.getElementById('i-name').textContent = `${p.name} — ${p.py}`;
@@ -896,6 +999,75 @@ document.getElementById('btn-now').addEventListener('click', function() {
     this.classList.toggle('active', nowMode > 0);
     updateNowBadge();
 });
+
+// ── Keyboard shortcuts ──
+window.addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const click = id => document.getElementById(id).click();
+    switch (e.key) {
+        case ' ':        e.preventDefault(); click('btn-pause');  break;
+        case '+': case '=': click('btn-fast'); break;
+        case '-': case '_': click('btn-slow'); break;
+        case 'c': case 'C': click('btn-cycles'); break;
+        case 'q': case 'Q': click('btn-qi');     break;
+        case 'l': case 'L': click('btn-labels'); break;
+        case 'b': case 'B': click('btn-bagua');  break;
+        case 'n': case 'N': click('btn-now');    break;
+        case 'Escape':
+            selected = null;
+            document.getElementById('info').classList.remove('show');
+            document.getElementById('tooltip').style.display = 'none';
+            break;
+    }
+});
+
+// ── Auto-hiding control bar ──
+const controlsEl = document.getElementById('controls');
+const handleEl = document.getElementById('controls-handle');
+let hideTimer = null;
+
+function scheduleHide(delay) {
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(hideControls, delay);
+}
+function showControls(autoHide) {
+    controlsEl.classList.remove('hidden');
+    handleEl.classList.remove('show');
+    if (autoHide) scheduleHide(4000);
+    else clearTimeout(hideTimer);
+}
+function hideControls() {
+    clearTimeout(hideTimer);
+    controlsEl.classList.add('hidden');
+    handleEl.classList.add('show');
+    document.getElementById('tooltip').style.display = 'none';
+}
+
+// Reveal when the pointer nears the bottom edge; let the timer hide it otherwise
+window.addEventListener('mousemove', e => {
+    if (e.clientY >= H - 110) showControls(true);
+});
+// Keep the bar up while the pointer is actually on it
+controlsEl.addEventListener('mouseenter', () => showControls(false));
+controlsEl.addEventListener('mouseleave', () => scheduleHide(2000));
+// Any interaction with a control resets the auto-hide timer (except minimize)
+controlsEl.addEventListener('click', e => {
+    if (e.target.id !== 'btn-min') showControls(true);
+});
+
+// Touch: tap near the bottom edge to summon the bar
+window.addEventListener('touchstart', e => {
+    const tch = e.touches[0];
+    if (tch && tch.clientY >= H - 120 && controlsEl.classList.contains('hidden')) {
+        showControls(true);
+    }
+}, { passive: true });
+
+document.getElementById('btn-min').addEventListener('click', hideControls);
+handleEl.addEventListener('click', () => showControls(true));
+
+// Show briefly on load, then auto-hide for an unobstructed view
+showControls(true);
 
 // Initial now badge update
 updateNowBadge();
