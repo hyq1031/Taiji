@@ -46,18 +46,26 @@ body {
 #controls {
     position: absolute;
     bottom: calc(28px + env(safe-area-inset-bottom, 0px));
-    left: 0; right: 0;
+    left: 50%;
+    transform: translateX(-50%) translateY(0);
     display: flex;
-    gap: 10px;
+    gap: 8px;
     align-items: center;
     z-index: 10;
     flex-wrap: wrap;
     justify-content: center;
-    padding: 0 14px;
+    max-width: min(92vw, 760px);
+    padding: 11px 16px;
+    background: rgba(10,14,28,0.5);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    border: 1px solid rgba(201,162,39,0.18);
+    border-radius: 22px;
+    box-shadow: 0 18px 44px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05);
     transition: transform 0.34s cubic-bezier(.4,0,.2,1), opacity 0.34s ease;
 }
 #controls.hidden {
-    transform: translateY(180%);
+    transform: translateX(-50%) translateY(160%);
     opacity: 0;
     pointer-events: none;
 }
@@ -69,7 +77,9 @@ body {
     left: 50%;
     transform: translateX(-50%);
     z-index: 11;
-    background: rgba(5,8,18,0.88);
+    background: rgba(10,14,28,0.6);
+    backdrop-filter: blur(12px) saturate(160%);
+    -webkit-backdrop-filter: blur(12px) saturate(160%);
     border: 1px solid rgba(201,162,39,0.28);
     color: rgba(201,162,39,0.75);
     padding: 7px 22px;
@@ -78,6 +88,7 @@ body {
     letter-spacing: 3px;
     cursor: pointer;
     font-family: Georgia, serif;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s ease, border-color 0.18s, color 0.18s;
@@ -86,27 +97,28 @@ body {
 #controls-handle:hover { border-color: rgba(201,162,39,0.7); color: #c9a227; }
 #btn-min { font-size: 15px; line-height: 1; padding: 6px 12px; }
 .ctrl-btn {
-    background: rgba(5,8,18,0.88);
-    border: 1px solid rgba(201,162,39,0.28);
-    color: rgba(201,162,39,0.75);
-    padding: 8px 18px;
+    background: rgba(201,162,39,0.07);
+    border: 1px solid rgba(201,162,39,0.2);
+    border-radius: 999px;
+    color: rgba(201,162,39,0.8);
+    padding: 7px 16px;
     font-size: 12px;
-    letter-spacing: 1.5px;
+    letter-spacing: 1.3px;
     cursor: pointer;
     font-family: Georgia, serif;
     transition: all 0.18s;
     white-space: nowrap;
 }
 .ctrl-btn:hover, .ctrl-btn.active {
-    background: rgba(201,162,39,0.14);
-    border-color: rgba(201,162,39,0.7);
-    color: #c9a227;
+    background: rgba(201,162,39,0.24);
+    border-color: rgba(201,162,39,0.75);
+    color: #f5d98a;
 }
 #speed-display {
-    color: rgba(201,162,39,0.5);
+    color: rgba(201,162,39,0.55);
     font-size: 11px;
-    letter-spacing: 3px;
-    min-width: 72px;
+    letter-spacing: 2.5px;
+    min-width: 80px;
     text-align: center;
 }
 
@@ -219,10 +231,12 @@ body {
     #controls {
         bottom: 16px;
         gap: 6px;
-        max-width: 96vw;
+        max-width: 95vw;
+        padding: 9px 12px;
+        border-radius: 18px;
     }
-    .ctrl-btn { padding: 7px 11px; font-size: 11px; letter-spacing: 1px; }
-    #speed-display { font-size: 10px; letter-spacing: 1.5px; min-width: 58px; }
+    .ctrl-btn { padding: 6px 11px; font-size: 10.5px; letter-spacing: 1px; }
+    #speed-display { font-size: 10px; letter-spacing: 1.5px; min-width: 64px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -262,8 +276,8 @@ body {
 </div>
 
 <div id="legend">
-    <div class="leg"><svg width="34" height="12"><line x1="0" y1="6" x2="34" y2="6" stroke="rgba(100,210,120,0.5)" stroke-width="1.5"/><circle cx="10" cy="6" r="2.5" fill="rgba(100,210,120,0.7)"/><circle cx="24" cy="6" r="2.5" fill="rgba(100,210,120,0.7)"/></svg>Generating 相生</div>
-    <div class="leg"><svg width="34" height="12"><line x1="0" y1="6" x2="34" y2="6" stroke="rgba(210,80,80,0.5)" stroke-width="1.5"/><circle cx="10" cy="6" r="2" fill="rgba(210,80,80,0.7)"/><circle cx="24" cy="6" r="2" fill="rgba(210,80,80,0.7)"/></svg>Controlling 相克</div>
+    <div class="leg"><svg width="34" height="12"><line x1="0" y1="6" x2="34" y2="6" stroke="rgba(100,210,120,0.5)" stroke-width="1.5"/><circle cx="10" cy="6" r="2.5" fill="rgba(100,210,120,0.7)"/><circle cx="24" cy="6" r="2.5" fill="rgba(100,210,120,0.7)"/></svg><span id="leg-gen-text">Generating 相生</span></div>
+    <div class="leg"><svg width="34" height="12"><line x1="0" y1="6" x2="34" y2="6" stroke="rgba(210,80,80,0.5)" stroke-width="1.5"/><circle cx="10" cy="6" r="2" fill="rgba(210,80,80,0.7)"/><circle cx="24" cy="6" r="2" fill="rgba(210,80,80,0.7)"/></svg><span id="leg-ctrl-text">Controlling 相克</span></div>
 </div>
 
 <div id="controls">
@@ -277,6 +291,7 @@ body {
     <button class="ctrl-btn active" id="btn-bagua">八卦</button>
     <button class="ctrl-btn" id="btn-sound">♪ SOUND</button>
     <button class="ctrl-btn" id="btn-now">NOW</button>
+    <button class="ctrl-btn" id="btn-lang" title="Switch language" aria-label="Switch language">🌐 EN/中</button>
     <button class="ctrl-btn" id="btn-min" title="Hide controls" aria-label="Hide controls">⌄</button>
 </div>
 
@@ -309,6 +324,40 @@ let showCycles = true, showQi = true, showLabels = true, showBagua = true;
 let soundOn = false, nowMode = 0; // nowMode: 0=off, 1=season, 2=time
 let selected = null, hovered = null;
 let prevHovered = null;
+
+// ── i18n (control bar + chrome labels) ──
+const I18N = {
+    speed:       { en:'SPEED',         zh:'速度' },
+    pause:       { en:'PAUSE',         zh:'暫停' },
+    resume:      { en:'RESUME',        zh:'繼續' },
+    cycles:      { en:'CYCLES',        zh:'循環' },
+    qi:          { en:'QI',            zh:'氣' },
+    labels:      { en:'LABELS',        zh:'標籤' },
+    bagua:       { en:'BAGUA',         zh:'八卦' },
+    sound:       { en:'SOUND',         zh:'音效' },
+    now:         { en:'NOW',           zh:'現在' },
+    season:      { en:'SEASON',        zh:'季節' },
+    clock:       { en:'CLOCK',         zh:'時鐘' },
+    menu:        { en:'MENU',          zh:'控制' },
+    hide:        { en:'Hide controls', zh:'隱藏控制' },
+    show:        { en:'Show controls', zh:'顯示控制' },
+    activeEl:    { en:'Active Element', zh:'當前元素' },
+    organClock:  { en:'ORGAN CLOCK',   zh:'臟腑時鐘' },
+    generating:  { en:'Generating',    zh:'相生' },
+    controlling: { en:'Controlling',   zh:'相克' },
+};
+let lang = 'both'; // 'en' | 'zh' | 'both'
+try {
+    const savedLang = localStorage.getItem('taiji-lang');
+    if (savedLang) lang = savedLang;
+} catch (e) {}
+
+function tr(key) {
+    const d = I18N[key];
+    if (lang === 'en') return d.en;
+    if (lang === 'zh') return d.zh;
+    return `${d.en} ${d.zh}`;
+}
 
 // ── Stars ──
 const STARS = Array.from({length: 320}, () => ({
@@ -513,13 +562,14 @@ function getActiveElementId() {
 
 function updateNowBadge() {
     const badge = document.getElementById('now-badge');
+    document.getElementById('now-label').textContent = tr('activeEl');
     if (nowMode === 0) { badge.classList.remove('show'); return; }
     badge.classList.add('show');
     const id = getActiveElementId();
     const p = byId(id);
     document.getElementById('now-element').textContent = `${p.cn} ${p.name}`;
     document.getElementById('now-element').style.color = p.color;
-    document.getElementById('now-mode').textContent = nowMode === 1 ? 'SEASON' : 'ORGAN CLOCK';
+    document.getElementById('now-mode').textContent = nowMode === 1 ? tr('season') : tr('organClock');
 }
 
 // ── Draw ──
@@ -973,7 +1023,41 @@ let speedIdx = 2;
 
 function updateSpeed() {
     speed = speedSteps[speedIdx];
-    document.getElementById('speed-display').textContent = `${speed}× SPEED`;
+    document.getElementById('speed-display').textContent = `${speed}× ${tr('speed')}`;
+}
+
+function updatePauseLabel() {
+    document.getElementById('btn-pause').textContent = `${paused ? '▶' : '⏸'} ${tr(paused ? 'resume' : 'pause')}`;
+}
+
+function updateNowBtnLabel() {
+    const keys = ['now', 'season', 'clock'];
+    document.getElementById('btn-now').textContent = tr(keys[nowMode]);
+}
+
+function updateLangBtnLabel() {
+    const labelMap = { en: 'EN', zh: '中文', both: 'EN/中' };
+    document.getElementById('btn-lang').textContent = `🌐 ${labelMap[lang]}`;
+}
+
+function applyLanguage() {
+    updateSpeed();
+    updatePauseLabel();
+    document.getElementById('btn-cycles').textContent = tr('cycles');
+    document.getElementById('btn-qi').textContent = tr('qi');
+    document.getElementById('btn-labels').textContent = tr('labels');
+    document.getElementById('btn-bagua').textContent = tr('bagua');
+    document.getElementById('btn-sound').textContent = `♪ ${tr('sound')}`;
+    updateNowBtnLabel();
+    updateLangBtnLabel();
+    document.getElementById('leg-gen-text').textContent = tr('generating');
+    document.getElementById('leg-ctrl-text').textContent = tr('controlling');
+    handleEl.textContent = `☰ ${tr('menu')}`;
+    handleEl.setAttribute('aria-label', tr('show'));
+    const minBtn = document.getElementById('btn-min');
+    minBtn.title = tr('hide');
+    minBtn.setAttribute('aria-label', tr('hide'));
+    updateNowBadge();
 }
 
 document.getElementById('btn-fast').addEventListener('click', () => {
@@ -987,7 +1071,7 @@ document.getElementById('btn-slow').addEventListener('click', () => {
 
 document.getElementById('btn-pause').addEventListener('click', function() {
     paused = !paused;
-    this.textContent = paused ? '▶ RESUME' : '⏸ PAUSE';
+    updatePauseLabel();
     this.classList.toggle('active', paused);
 });
 
@@ -1020,10 +1104,16 @@ document.getElementById('btn-sound').addEventListener('click', function() {
 
 document.getElementById('btn-now').addEventListener('click', function() {
     nowMode = (nowMode + 1) % 3;
-    const labels = ['NOW', 'SEASON', 'CLOCK'];
-    this.textContent = labels[nowMode];
+    updateNowBtnLabel();
     this.classList.toggle('active', nowMode > 0);
     updateNowBadge();
+});
+
+document.getElementById('btn-lang').addEventListener('click', function() {
+    const order = ['en', 'zh', 'both'];
+    lang = order[(order.indexOf(lang) + 1) % order.length];
+    try { localStorage.setItem('taiji-lang', lang); } catch (e) {}
+    applyLanguage();
 });
 
 // ── Keyboard shortcuts ──
@@ -1039,6 +1129,7 @@ window.addEventListener('keydown', e => {
         case 'l': case 'L': click('btn-labels'); break;
         case 'b': case 'B': click('btn-bagua');  break;
         case 'n': case 'N': click('btn-now');    break;
+        case 'g': case 'G': click('btn-lang');   break;
         case 'Escape':
             selected = null;
             document.getElementById('info').classList.remove('show');
@@ -1092,11 +1183,11 @@ window.addEventListener('touchstart', e => {
 document.getElementById('btn-min').addEventListener('click', hideControls);
 handleEl.addEventListener('click', () => showControls(true));
 
+// Apply saved/default language to all control labels, badge, and legend
+applyLanguage();
+
 // Show briefly on load, then auto-hide for an unobstructed view
 showControls(true);
-
-// Initial now badge update
-updateNowBadge();
 </script>
 </body>
 </html>
