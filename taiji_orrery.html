@@ -267,11 +267,11 @@ body {
     </div>
     <div id="i-sub"></div>
     <div id="i-hr"></div>
-    <div class="i-row"><span class="i-lbl">Planet</span><span class="i-val" id="iv-planet"></span></div>
-    <div class="i-row"><span class="i-lbl">Organs</span><span class="i-val" id="iv-organs"></span></div>
-    <div class="i-row"><span class="i-lbl">Energy</span><span class="i-val" id="iv-energy"></span></div>
-    <div class="i-row"><span class="i-lbl">Generates</span><span class="i-val" id="iv-gen"></span></div>
-    <div class="i-row"><span class="i-lbl">Controls</span><span class="i-val" id="iv-ctrl"></span></div>
+    <div class="i-row"><span class="i-lbl" id="lbl-planet">Planet</span><span class="i-val" id="iv-planet"></span></div>
+    <div class="i-row"><span class="i-lbl" id="lbl-organs">Organs</span><span class="i-val" id="iv-organs"></span></div>
+    <div class="i-row"><span class="i-lbl" id="lbl-energy">Energy</span><span class="i-val" id="iv-energy"></span></div>
+    <div class="i-row"><span class="i-lbl" id="lbl-gen">Generates</span><span class="i-val" id="iv-gen"></span></div>
+    <div class="i-row"><span class="i-lbl" id="lbl-ctrl">Controls</span><span class="i-val" id="iv-ctrl"></span></div>
     <div id="i-quote"></div>
 </div>
 
@@ -345,7 +345,13 @@ const I18N = {
     organClock:  { en:'ORGAN CLOCK',   zh:'臟腑時鐘' },
     generating:  { en:'Generating',    zh:'相生' },
     controlling: { en:'Controlling',   zh:'相克' },
+    lblPlanet:   { en:'Planet',        zh:'行星' },
+    lblOrgans:   { en:'Organs',        zh:'臟腑' },
+    lblEnergy:   { en:'Energy',        zh:'能量' },
+    lblGenerates:{ en:'Generates',     zh:'生' },
+    lblControls: { en:'Controls',      zh:'克' },
 };
+const ELEMENT_ZH = { Wood:'木', Fire:'火', Earth:'土', Metal:'金', Water:'水' };
 let lang = 'both'; // 'en' | 'zh' | 'both'
 try {
     const savedLang = localStorage.getItem('taiji-lang');
@@ -357,6 +363,22 @@ function tr(key) {
     if (lang === 'en') return d.en;
     if (lang === 'zh') return d.zh;
     return `${d.en} ${d.zh}`;
+}
+
+// Per-planet bilingual field (e.g. p.organs / p.organsZh)
+function pf(p, key) {
+    const en = p[key], zh = p[key + 'Zh'];
+    if (lang === 'en') return en;
+    if (lang === 'zh') return zh;
+    return `${en} / ${zh}`;
+}
+
+// Element name (e.g. p.gen === 'Earth') in the current language
+function elLabel(elName) {
+    const zh = ELEMENT_ZH[elName];
+    if (lang === 'en') return elName;
+    if (lang === 'zh') return zh;
+    return `${elName} ${zh}`;
 }
 
 // ── Stars ──
@@ -374,57 +396,62 @@ const PLANETS = [
     {
         id:'fire', name:'Fire', cn:'火', py:'Huǒ',
         color:'#e53935', glow:'229,57,53',
-        season:'Summer', ordinal:'2nd Planet',
+        season:'Summer', seasonZh:'夏', ordinal:'2nd Planet', ordinalZh:'第二行星',
         r:0.115, spd:0.60, tilt:0.06, a0:1.0, sz:10,
-        organs:'Heart · Small Intestine',
-        energy:'Outward in all directions simultaneously',
+        organs:'Heart · Small Intestine', organsZh:'心 · 小腸',
+        energy:'Outward in all directions simultaneously', energyZh:'同時向四方擴散',
         gen:'Earth', ctrl:'Metal',
         freq: 392.00,
         quote:'Joy expressed so fully it becomes light itself — the heart that feels, that connects.',
+        quoteZh:'喜悅盈滿,化為光本身——感受萬物、連結萬物的心。',
     },
     {
         id:'wood', name:'Wood', cn:'木', py:'Mù',
         color:'#43a047', glow:'67,160,71',
-        season:'Spring', ordinal:'1st Planet',
+        season:'Spring', seasonZh:'春', ordinal:'1st Planet', ordinalZh:'第一行星',
         r:0.185, spd:0.41, tilt:0.055, a0:2.4, sz:11,
-        organs:'Liver · Gallbladder',
-        energy:'Upward and outward',
+        organs:'Liver · Gallbladder', organsZh:'肝 · 膽',
+        energy:'Upward and outward', energyZh:'向上向外伸展',
         gen:'Fire', ctrl:'Earth',
         freq: 329.63,
         quote:'The courage to begin — to bend without breaking and to rise without losing one\'s roots.',
+        quoteZh:'開始的勇氣——彎而不折,升而不忘根本。',
     },
     {
         id:'earth', name:'Earth', cn:'土', py:'Tǔ',
         color:'#f9a825', glow:'249,168,37',
-        season:'Late Summer', ordinal:'3rd Planet',
+        season:'Late Summer', seasonZh:'長夏', ordinal:'3rd Planet', ordinalZh:'第三行星',
         r:0.265, spd:0.265, tilt:0.05, a0:4.0, sz:13,
-        organs:'Spleen · Stomach',
-        energy:'Reception, drawing toward center',
+        organs:'Spleen · Stomach', organsZh:'脾 · 胃',
+        energy:'Reception, drawing toward center', energyZh:'承納,向中心匯聚',
         gen:'Metal', ctrl:'Water',
         freq: 261.63,
         quote:'Stillness is not absence of motion — it is motion so perfectly balanced it appears still.',
+        quoteZh:'靜並非無動——而是動達致完美平衡,看似靜止。',
     },
     {
         id:'metal', name:'Metal', cn:'金', py:'Jīn',
         color:'#90a4ae', glow:'144,164,174',
-        season:'Autumn', ordinal:'4th Planet',
+        season:'Autumn', seasonZh:'秋', ordinal:'4th Planet', ordinalZh:'第四行星',
         r:0.352, spd:0.175, tilt:0.07, a0:0.8, sz:10,
-        organs:'Lungs · Large Intestine',
-        energy:'Inward and downward',
+        organs:'Lungs · Large Intestine', organsZh:'肺 · 大腸',
+        energy:'Inward and downward', energyZh:'向內向下收斂',
         gen:'Water', ctrl:'Wood',
         freq: 293.66,
         quote:'Clarity without coldness — precision without cruelty — the ability to let go without grief.',
+        quoteZh:'清明而不冷峻——精準而不殘酷——放下而不悲傷的能力。',
     },
     {
         id:'water', name:'Water', cn:'水', py:'Shuǐ',
         color:'#1e88e5', glow:'30,136,229',
-        season:'Winter', ordinal:'5th Planet',
+        season:'Winter', seasonZh:'冬', ordinal:'5th Planet', ordinalZh:'第五行星',
         r:0.438, spd:0.107, tilt:0.05, a0:3.2, sz:12,
-        organs:'Kidneys · Bladder',
-        energy:'Downward, filling every hollow',
+        organs:'Kidneys · Bladder', organsZh:'腎 · 膀胱',
+        energy:'Downward, filling every hollow', energyZh:'向下流注,充盈每個低處',
         gen:'Wood', ctrl:'Fire',
         freq: 440.00,
         quote:'Wisdom without fear — the willingness to descend into the unknown and trust the ascent will follow.',
+        quoteZh:'無懼的智慧——願意潛入未知,並相信終將上升。',
     },
 ];
 
@@ -1001,13 +1028,13 @@ function openPanel(p) {
     document.getElementById('i-name').style.color = p.color;
     document.getElementById('i-chinese').textContent = p.cn;
     document.getElementById('i-chinese').style.color = p.color;
-    document.getElementById('i-sub').textContent = `${p.ordinal}  ·  ${p.season}`;
-    document.getElementById('iv-planet').textContent = p.ordinal;
-    document.getElementById('iv-organs').textContent = p.organs;
-    document.getElementById('iv-energy').textContent = p.energy;
-    document.getElementById('iv-gen').textContent = p.gen;
-    document.getElementById('iv-ctrl').textContent = p.ctrl;
-    document.getElementById('i-quote').textContent = `"${p.quote}"`;
+    document.getElementById('i-sub').textContent = `${pf(p,'ordinal')}  ·  ${pf(p,'season')}`;
+    document.getElementById('iv-planet').textContent = pf(p,'ordinal');
+    document.getElementById('iv-organs').textContent = pf(p,'organs');
+    document.getElementById('iv-energy').textContent = pf(p,'energy');
+    document.getElementById('iv-gen').textContent = elLabel(p.gen);
+    document.getElementById('iv-ctrl').textContent = elLabel(p.ctrl);
+    document.getElementById('i-quote').textContent = `"${pf(p,'quote')}"`;
     document.getElementById('info').style.borderColor = `rgba(${p.glow},0.38)`;
     document.getElementById('info').classList.add('show');
 }
@@ -1058,6 +1085,13 @@ function applyLanguage() {
     minBtn.title = tr('hide');
     minBtn.setAttribute('aria-label', tr('hide'));
     updateNowBadge();
+
+    document.getElementById('lbl-planet').textContent = tr('lblPlanet');
+    document.getElementById('lbl-organs').textContent = tr('lblOrgans');
+    document.getElementById('lbl-energy').textContent = tr('lblEnergy');
+    document.getElementById('lbl-gen').textContent = tr('lblGenerates');
+    document.getElementById('lbl-ctrl').textContent = tr('lblControls');
+    if (selected) openPanel(selected); // re-render the open detail panel in the new language
 }
 
 document.getElementById('btn-fast').addEventListener('click', () => {
