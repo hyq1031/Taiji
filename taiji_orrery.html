@@ -385,15 +385,16 @@ const CTRL = ['wood','earth','water','fire','metal'];
 
 // ── Trigrams (Later Heaven / 後天八卦) ──
 // Compass angles: S=π/2, SW=3π/4, W=π, NW=-3π/4, N=-π/2, NE=-π/4, E=0, SE=π/4
+// lines: top→bottom, true = solid (yang ⚊), false = broken (yin ⚋)
 const TRIGRAMS = [
-    { sym:'☲', cn:'離', name:'Li',   element:'Fire',   angle: Math.PI/2 },       // S
-    { sym:'☷', cn:'坤', name:'Kun',  element:'Earth',  angle: 3*Math.PI/4 },     // SW
-    { sym:'☱', cn:'兌', name:'Dui',  element:'Lake',   angle: Math.PI },          // W
-    { sym:'☰', cn:'乾', name:'Qian', element:'Heaven', angle: -3*Math.PI/4 },    // NW
-    { sym:'☵', cn:'坎', name:'Kan',  element:'Water',  angle: -Math.PI/2 },      // N
-    { sym:'☶', cn:'艮', name:'Gen',  element:'Mountain',angle: -Math.PI/4 },     // NE
-    { sym:'☳', cn:'震', name:'Zhen', element:'Thunder', angle: 0 },              // E
-    { sym:'☴', cn:'巽', name:'Xun',  element:'Wind',   angle: Math.PI/4 },       // SE
+    { sym:'☲', cn:'離', name:'Li',   element:'Fire',    angle: Math.PI/2,     lines:[true,false,true]  }, // S
+    { sym:'☷', cn:'坤', name:'Kun',  element:'Earth',   angle: 3*Math.PI/4,   lines:[false,false,false]}, // SW
+    { sym:'☱', cn:'兌', name:'Dui',  element:'Lake',    angle: Math.PI,       lines:[false,true,true]  }, // W
+    { sym:'☰', cn:'乾', name:'Qian', element:'Heaven',  angle: -3*Math.PI/4,  lines:[true,true,true]   }, // NW
+    { sym:'☵', cn:'坎', name:'Kan',  element:'Water',   angle: -Math.PI/2,    lines:[false,true,false] }, // N
+    { sym:'☶', cn:'艮', name:'Gen',  element:'Mountain',angle: -Math.PI/4,    lines:[true,false,false] }, // NE
+    { sym:'☳', cn:'震', name:'Zhen', element:'Thunder', angle: 0,             lines:[false,false,true] }, // E
+    { sym:'☴', cn:'巽', name:'Xun',  element:'Wind',    angle: Math.PI/4,     lines:[true,true,false]  }, // SE
 ];
 
 // ── Qi particles ──
@@ -651,37 +652,62 @@ function drawBagua() {
     const ringR = 0.56 * R;
     const rotOffset = t * 0.04; // slow drift
 
+    // Trigram bar geometry
+    const barW = R * 0.052;          // full line width
+    const barH = Math.max(2, R * 0.0075); // line thickness
+    const gapV = R * 0.016;          // vertical gap between the 3 lines
+    const gapBroken = barW * 0.32;   // gap in a broken (yin) line
+
     TRIGRAMS.forEach(tg => {
         const ang = tg.angle + rotOffset;
         const x = cx + Math.cos(ang) * ringR;
         const y = cy + Math.sin(ang) * ringR;
 
-        const pulse = 0.55 + 0.45 * Math.sin(t * 0.6 + tg.angle);
+        const pulse = 0.78 + 0.22 * Math.sin(t * 0.6 + tg.angle);
+        const alpha = 0.85 * pulse;
 
         ctx.save();
-        ctx.font = `${Math.round(R * 0.048)}px Georgia`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = `rgba(201,162,39,${0.38 * pulse})`;
-        ctx.fillText(tg.sym, x, y);
+        ctx.shadowColor = 'rgba(201,162,39,0.55)';
+        ctx.shadowBlur = R * 0.012;
+        ctx.fillStyle = `rgba(224,188,84,${alpha})`;
+
+        // Draw 3 stacked lines (top→bottom)
+        tg.lines.forEach((solid, i) => {
+            const ly = y + (i - 1) * gapV - barH / 2;
+            if (solid) {
+                ctx.fillRect(x - barW / 2, ly, barW, barH);
+            } else {
+                const seg = (barW - gapBroken) / 2;
+                ctx.fillRect(x - barW / 2, ly, seg, barH);
+                ctx.fillRect(x + gapBroken / 2, ly, seg, barH);
+            }
+        });
+        ctx.restore();
 
         if (showLabels) {
-            ctx.font = `${Math.round(R * 0.026)}px Georgia`;
-            ctx.fillStyle = `rgba(201,162,39,${0.22 * pulse})`;
-            // Offset label radially outward from center
-            const labelR = ringR + R * 0.062;
+            const labelR = ringR + R * 0.075;
             const lx = cx + Math.cos(ang) * labelR;
-            const ly = cy + Math.sin(ang) * labelR;
-            ctx.fillText(tg.cn, lx, ly);
+            const lyc = cy + Math.sin(ang) * labelR;
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            // Chinese name
+            ctx.font = `${Math.round(R * 0.03)}px Georgia`;
+            ctx.fillStyle = `rgba(232,200,120,${0.8 * pulse})`;
+            ctx.fillText(tg.cn, lx, lyc - R * 0.012);
+            // English element
+            ctx.font = `${Math.round(R * 0.019)}px Georgia`;
+            ctx.fillStyle = `rgba(232,200,120,${0.5 * pulse})`;
+            ctx.fillText(tg.element, lx, lyc + R * 0.018);
+            ctx.restore();
         }
-        ctx.restore();
     });
 
     // Subtle ring guide
     ctx.save();
     ctx.beginPath();
     ctx.arc(cx, cy, ringR, 0, Math.PI*2);
-    ctx.strokeStyle = 'rgba(201,162,39,0.055)';
+    ctx.strokeStyle = 'rgba(201,162,39,0.10)';
     ctx.lineWidth = 0.8;
     ctx.setLineDash([2, 18]);
     ctx.stroke();
